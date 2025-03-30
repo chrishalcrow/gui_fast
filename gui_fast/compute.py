@@ -14,40 +14,41 @@ def get_closest_channels(sorting_analyzer, channel_index):
 
     return sorted_args[:4]
 
-def get_concat_waveforms(sorting_analyzer, unit_id_1, unit_id_2, n_components=2, whiten=True):
+def get_concat_waveforms(waveforms, unit_id_1, unit_id_2, unit_id_to_channel_indices, n_components=2, whiten=True):
 
-    unit_id_to_channel_indices = sorting_analyzer.sparsity.unit_id_to_channel_indices
+    print("getting concat waveforms")
 
     unit_1_channels = unit_id_to_channel_indices[unit_id_1]
     unit_2_channels = unit_id_to_channel_indices[unit_id_2]
 
     common_ids = np.intersect1d(unit_1_channels, unit_2_channels)
-    #common_ids = np.array(set(unit_1_channels).intersection(unit_2_channels))
 
-    waveforms = sorting_analyzer.get_extension("waveforms")
+    waveforms_1 = waveforms[unit_id_1][:,:,common_ids]
+    waveforms_2 = waveforms[unit_id_2][:,:,common_ids]
 
-    waveforms_1 = waveforms.get_waveforms_one_unit(unit_id=unit_id_1, force_dense=True)[:,:,common_ids]
-    waveforms_2 = waveforms.get_waveforms_one_unit(unit_id=unit_id_2, force_dense=True)[:,:,common_ids]
+    num_waveforms = min(np.shape(waveforms_1)[0], np.shape(waveforms_2)[0])
 
-    waveforms_1_concat = [np.concatenate(waveforms_1[a,:,:]) for a in range(500)]
-    waveforms_2_concat = [np.concatenate(waveforms_2[a,:,:]) for a in range(500)]
+    waveforms_1_concat = np.array([np.concatenate(waveforms_1[a,:,:]) for a in range(num_waveforms)])
+    waveforms_2_concat = np.array([np.concatenate(waveforms_2[a,:,:]) for a in range(num_waveforms)])
 
     return waveforms_1_concat, waveforms_2_concat
 
+
+
 def get_pcs_from_waveforms(waveforms_1, waveforms_2, n_components=4, whiten=True):
+
+    print("computing pcas...")
 
     pca_model = IncrementalPCA(n_components=n_components, whiten=whiten)
 
-    waveforms = np.concatenate(waveforms_1, waveforms_2)
+    waveforms = np.concatenate([waveforms_1, waveforms_2])
 
     pca_model.fit(waveforms)
 
     pcas_1 = pca_model.transform(waveforms_1)
     pcas_2 = pca_model.transform(waveforms_2)
 
-    pcas = np.array([pcas_1, pcas_2] )
-    
-    return pcas
+    return pcas_1, pcas_2
 
 
 
@@ -91,19 +92,25 @@ if __name__ == '__main__':
     sa_path = "/home/nolanlab/Work/Projects/MotionCorrect/correct_ks_sa"
     sorting_analyzer = si.load_sorting_analyzer(sa_path, load_extensions=False)
 
-    print(get_concat_pcs_from_analyzer(sorting_analyzer, 111, 120))
+    waveforms = get_concat_waveforms(sorting_analyzer, 111, 113)
 
-    #pcas = get_pcs_from_analyzer(sorting_analyzer, 111, 108)
+    print(type(waveforms[0]))
 
-    #fig, axes = plt.subplots(2,2)
-    #loop_axes = [axes[0,0], axes[0,1], axes[1,0], axes[1,1]]
+    pcas = get_pcs_from_waveforms(waveforms[0], waveforms[1])
 
-    #for pca, ax in zip(pcas, loop_axes):
-        
-    #    ax.scatter(pca[0][:,0], pca[0][:,1])
-    #    ax.scatter(pca[1][:,0], pca[1][:,1])
+    fig, axes = plt.subplots(2,2)
+    loop_axes = [axes[0,0], axes[0,1], axes[1,0], axes[1,1]]
+    pcs_to_plot = [ [0,1], [0,2], [1,2], [2,3] ]
+    
+    for ax, pc in zip(loop_axes, pcs_to_plot):
 
-    #fig.show()
+        ax.scatter(pcas[0][:,pc[0]], pcas[0][:,pc[1]])
+        ax.scatter(pcas[1][:,pc[0]], pcas[1][:,pc[1]])
+
+        ax.set_title(f"PC{pc[0]} vs PC{pc[1]}")
+
+    
+    fig.show()
 
     #pca_model.partial_fit(waveform)
 
