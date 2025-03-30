@@ -10,6 +10,8 @@ class DataForGUI:
 
     def __init__(self, sorting_analyzer):
 
+        self.sorting_analyzer = sorting_analyzer
+
         self.unit_ids = sorting_analyzer.unit_ids
 
         self.rec_samples = {"of1": 30007677, "vr": 54217811, "of2": 32232891}
@@ -21,16 +23,6 @@ class DataForGUI:
         print("caching spikes...")
         self.spikes = si.spike_vector_to_spike_trains(
             sorting_analyzer.sorting.to_spike_vector(concatenated=False), unit_ids=sorting_analyzer.unit_ids)[0]
-
-        good_units = list(get_good_units(sorting_analyzer).index)
-        outlier_units = get_outlier_units(self.spikes, self.rec_samples)
-        good_and_outlier_units = set(outlier_units).intersection(good_units)
-        self.outlier_ids = list(good_and_outlier_units)
-
-        self.outlier_ids = get_outlier_units(self.spikes, self.rec_samples)
-        self.id_1_tracker = 1
-        self.unit_id_1 = self.outlier_ids[self.id_1_tracker]
-
         self.template_similarity = sorting_analyzer.get_extension(
             "template_similarity").get_data()
 
@@ -44,10 +36,11 @@ class DataForGUI:
         self.unit_ymax = max(self.channel_locations[:, 1])
 
 
-        self.unit_id_to_channel_indices = sorting_analyzer.sparsity.unit_id_to_channel_indices
+        sparsity_for_pca = si.compute_sparsity(sorting_analyzer, radius_um=50)
 
-        #waveforms = sorting_analyzer.get_extension("waveforms")
-        #self.waveforms = {unit_id: waveforms.get_waveforms_one_unit(unit_id = unit_id, force_dense=True) for unit_id in sorting_analyzer.unit_ids}
+
+        self.unit_id_to_channel_indices = sparsity_for_pca.unit_id_to_channel_indices
+        self.waveforms = sorting_analyzer.get_extension("waveforms")
 
         
         max_channels = sorting_analyzer.channel_ids_to_indices(
@@ -87,8 +80,10 @@ class DataForGUI:
         unit_data['correlogram_21'] = self.correlograms[unit_index_2][unit_index_1]
         unit_data['correlogram_22'] = self.correlograms[unit_index_2][unit_index_2]
 
-        #waveforms = get_concat_waveforms(self.waveforms, self.unit_id_to_channel_indices, unit_index_1, unit_index_2)
-        #unit_data['pca_1'], unit_data['pca_2'] = get_pcs_from_waveforms(waveforms[0], waveforms[1])
+        waveforms = get_concat_waveforms(self.waveforms, unit_index_1, unit_index_2, self.unit_id_to_channel_indices)
+        unit_data['pca_1'], unit_data['pca_2'] = get_pcs_from_waveforms(waveforms[0], waveforms[1])
+
+        print("pca1: ", unit_data['pca_1'])
 
         unit_data['unit_location_1'] = self.unit_locations[unit_index_1]
         unit_data['unit_location_2'] = self.unit_locations[unit_index_2]

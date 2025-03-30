@@ -23,8 +23,8 @@ def get_concat_waveforms(waveforms, unit_id_1, unit_id_2, unit_id_to_channel_ind
 
     common_ids = np.intersect1d(unit_1_channels, unit_2_channels)
 
-    waveforms_1 = waveforms[unit_id_1][:,:,common_ids]
-    waveforms_2 = waveforms[unit_id_2][:,:,common_ids]
+    waveforms_1 = waveforms.get_waveforms_one_unit(unit_id = unit_id_1, force_dense=True)[:,:,common_ids]
+    waveforms_2 = waveforms.get_waveforms_one_unit(unit_id = unit_id_2, force_dense=True)[:,:,common_ids]
 
     num_waveforms = min(np.shape(waveforms_1)[0], np.shape(waveforms_2)[0])
 

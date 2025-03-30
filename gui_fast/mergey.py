@@ -10,9 +10,9 @@ import pyqtgraph as pg
 import spikeinterface.full as si
 import numpy as np
 
-from curate import get_good_units, get_outlier_units
 from similarity import get_similar_units 
 from wrangle import DataForGUI
+from curate import get_good_units, get_outlier_units
 
 pg.setConfigOption('background', 'w')
 
@@ -48,7 +48,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.unit_id_1 = 111
         self.unit_id_2 = 108
 
-        print(self.data)
+
+
+        good_units = list(get_good_units(sorting_analyzer).index)
+        outlier_units = get_outlier_units(self.data.spikes, self.data.rec_samples)
+        good_and_outlier_units = set(outlier_units).intersection(good_units)
+        self.outlier_ids = list(good_and_outlier_units)
+
+        self.outlier_ids = get_outlier_units(self.data.spikes, self.data.rec_samples)
+        self.id_1_tracker = 1
+        self.id_2_tracker = 1
+
+        possible_units = get_similar_units(self.data.template_similarity, self.data.unit_ids, self.unit_id_1)
+        self.possible_units = possible_units
+
+
         super().__init__()
 
         self.setWindowTitle("QuickCurate")
@@ -109,7 +123,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.id_1_tracker = int(self.id_1_tracker) + 1
             self.unit_id_1 = self.outlier_ids[self.id_1_tracker]
             possible_units = get_similar_units(
-                self.template_similarity, self.unit_ids, self.unit_id_1)
+                self.data.template_similarity, self.data.unit_ids, self.unit_id_1)
             self.possible_units = possible_units
             self.id_2_tracker = 1
             if self.id_2_tracker >= len(self.possible_units):
@@ -121,7 +135,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.id_1_tracker = int(self.id_1_tracker) - 1
             self.unit_id_1 = self.outlier_ids[self.id_1_tracker]
             possible_units = get_similar_units(
-                self.template_similarity, self.unit_ids, self.unit_id_1)
+                self.data.template_similarity, self.data.unit_ids, self.unit_id_1)
             self.possible_units = possible_units
             self.id_2_tracker = 1
             self.unit_id_2 = possible_units[self.id_2_tracker]
@@ -141,7 +155,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print("Unit 1:", self.unit_id_1, "Unit 2:", self.unit_id_2)
         self.compute_comparitive()
 
-        unit_data = self.data.get_unit_data()
+        unit_data = self.data.get_unit_data(self.unit_id_1, self.unit_id_2)
 
         self.update_plot(unit_data)
 
@@ -179,6 +193,18 @@ class MainWindow(QtWidgets.QMainWindow):
             pen=None, symbolPen=None, symbol="o", symbolBrush=unit_1_color, symbolSize=4)
         self.pca_11_plot_2 = self.pca_11_widget.plot(
             pen=None, symbolPen=None, symbol="o", symbolBrush=unit_2_color, symbolSize=4)
+        self.pca_12_plot_1 = self.pca_12_widget.plot(
+            pen=None, symbolPen=None, symbol="o", symbolBrush=unit_1_color, symbolSize=4)
+        self.pca_12_plot_2 = self.pca_12_widget.plot(
+            pen=None, symbolPen=None, symbol="o", symbolBrush=unit_2_color, symbolSize=4)
+        self.pca_21_plot_1 = self.pca_21_widget.plot(
+            pen=None, symbolPen=None, symbol="o", symbolBrush=unit_1_color, symbolSize=4)
+        self.pca_21_plot_2 = self.pca_21_widget.plot(
+            pen=None, symbolPen=None, symbol="o", symbolBrush=unit_2_color, symbolSize=4)
+        self.pca_22_plot_1 = self.pca_22_widget.plot(
+            pen=None, symbolPen=None, symbol="o", symbolBrush=unit_1_color, symbolSize=4)
+        self.pca_22_plot_2 = self.pca_22_widget.plot(
+            pen=None, symbolPen=None, symbol="o", symbolBrush=unit_2_color, symbolSize=4)
 
         self.correlogram_11_plot = self.correlogram_11_widget.plot(
             stepMode="left", fillLevel=0, fillOutline=True, brush=(0, 0, 255, 150))
@@ -214,8 +240,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.templates_1_plot.setData(unit_data['template_1'])
         self.templates_2_plot.setData(unit_data['template_2'])
 
-        #self.pca_11_plot_1.setData(unit_data['pca_1'][0], unit_data['pca_1'][1]) 
-        #self.pca_11_plot_1.setData(unit_data['pca_2'][0], unit_data['pca_2'][1]) 
+        self.pca_11_plot_1.setData(unit_data['pca_1'][:,0], unit_data['pca_1'][:,1]) 
+        self.pca_11_plot_2.setData(unit_data['pca_2'][:,0], unit_data['pca_2'][:,1]) 
+        self.pca_12_plot_1.setData(unit_data['pca_1'][:,0], unit_data['pca_1'][:,2]) 
+        self.pca_12_plot_2.setData(unit_data['pca_2'][:,0], unit_data['pca_2'][:,2]) 
+        self.pca_21_plot_1.setData(unit_data['pca_1'][:,1], unit_data['pca_1'][:,2]) 
+        self.pca_21_plot_2.setData(unit_data['pca_2'][:,1], unit_data['pca_2'][:,2]) 
+        self.pca_22_plot_1.setData(unit_data['pca_1'][:,2], unit_data['pca_1'][:,3]) 
+        self.pca_22_plot_2.setData(unit_data['pca_2'][:,2], unit_data['pca_2'][:,3]) 
 
         self.correlogram_11_plot.setData(
             np.arange(0, len(unit_data['correlogram_11']), 1), unit_data['correlogram_11'])
