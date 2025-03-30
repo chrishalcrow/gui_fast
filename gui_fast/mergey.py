@@ -3,7 +3,6 @@ import sys
 import PyQt6.QtWidgets as QtWidgets
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.functions import mkPen
 import spikeinterface.full as si
 import numpy as np
 
@@ -68,8 +67,8 @@ def get_outlier_units(all_spikes, samples):
 def main():
 
     #    sa_path = "/home/nolanlab/Work/Harry_Project/derivatives/M25/D25/kilosort4_sa"
-    #    sa_path = "/home/nolanlab/Work/Projects/MotionCorrect/correct_ks_sa"
-    sa_path = "/Users/christopherhalcrow/Work/Harry_Project/derivatives/kilosort4_sa"
+    sa_path = "/home/nolanlab/Work/Projects/MotionCorrect/correct_ks_sa"
+#    sa_path = "/Users/christopherhalcrow/Work/Harry_Project/derivatives/kilosort4_sa"
     print("loading sorting analyzer...")
     sorting_analyzer = si.load_sorting_analyzer(sa_path, load_extensions=False)
 
