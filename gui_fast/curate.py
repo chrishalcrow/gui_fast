@@ -16,7 +16,7 @@ def get_good_units(analyzer):
     return good_qms
 
 
-def get_type_of_firing(spike, rec_samples, threshold=0.1):
+def get_type_of_firing(spike, rec_samples, threshold=0.3):
 
     num_of1spikes = np.sum(
         spike < rec_samples['of1'])/rec_samples['of1']*30_000
@@ -48,5 +48,3 @@ def get_outlier_units(all_spikes, samples):
             outliers.append(unit_id)
 
     return outliers
-
-
