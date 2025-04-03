@@ -12,7 +12,7 @@ import numpy as np
 def get_good_units(analyzer):
     qms = analyzer.get_extension('quality_metrics').get_data()
     good_qms = qms.query(
-        "snr > 1 & firing_rate > 0.05 & rp_contamination < 0.2")
+        "snr > 1 & firing_rate > 0.05")
     return good_qms
 
 

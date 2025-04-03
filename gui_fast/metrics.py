@@ -1,5 +1,13 @@
 import numpy as np
-import spikeinterface.full as si
+
+qm_metrics_list = ['presence_ratio', 'snr',
+               'isi_violations_ratio', 'rp_contamination',
+               'sync_spike_2', 'sync_spike_4', 'firing_range',
+               'sd_ratio']
+tm_metrics_list = ['peak_to_valley', 'peak_trough_ratio', 'half_width',
+               'repolarization_slope', 'recovery_slope', 'num_positive_peaks',
+               'num_negative_peaks', 'velocity_above', 'velocity_below', 'exp_decay',
+               'spread']
 
 
 def compute_metrics(data, unit_id_1, unit_id_2):
@@ -17,15 +25,8 @@ def get_single_unit_metrics(data, unit_id_1, unit_id_2):
     quality_metrics = data.quality_metrics
     template_metrics = data.template_metrics
 
-    qm_list = ['presence_ratio', 'snr',
-               'isi_violations_ratio', 'rp_contamination',
-               'amplitude_cv_median', 'amplitude_cv_range',
-               'sync_spike_2', 'sync_spike_4', 'firing_range',
-               'sd_ratio']
-    tm_list = ['peak_to_valley', 'peak_trough_ratio', 'half_width',
-               'repolarization_slope', 'recovery_slope', 'num_positive_peaks',
-               'num_negative_peaks', 'velocity_above', 'velocity_below', 'exp_decay',
-               'spread']
+    qm_list = qm_metrics_list
+    tm_list = tm_metrics_list
 
     for a, unit_id in enumerate([unit_id_1, unit_id_2]):
 

@@ -12,7 +12,7 @@ import spikeinterface.full as si
 from similarity import get_similar_units
 from wrangle import DataForGUI
 from curate import get_good_units, get_outlier_units
-from metrics import compute_metrics
+from metrics import compute_metrics, qm_metrics_list, tm_metrics_list
 
 pg.setConfigOption('background', 'w')
 
@@ -24,14 +24,32 @@ unit_2_color = (242, 142, 43)
 
 def main():
 
+    si.set_global_job_kwargs(n_jobs=8)
+
     #    sa_path = "/home/nolanlab/Work/Harry_Project/derivatives/M25/D25/kilosort4_sa"
-    #    sa_path = "/home/nolanlab/Work/Projects/MotionCorrect/correct_ks_sa"
-    sa_path = "/Users/christopherhalcrow/Work/Harry_Project/derivatives/kilosort4_sa"
-    print("loading sorting analyzer...", end=None)
+    #sa_path = "/home/nolanlab/Work/Harry_Project/derivatives/M25/D21/kilosort4/kilosort4_sa/"
+    #sa_path = "/Users/christopherhalcrow/Work/Harry_Project/derivatives/kilosort4_sa"
+    #print("loading sorting analyzer...", end=None)
+    sa_path = "/home/nolanlab/Work/Harry_Project/derivatives/M22/D36/full/kilosort4_4_sa.zarr"
+    mouse = 22
+    day = 36
+    #sa_path = f"/run/user/1000/gvfs/smb-share:server=cmvm.datastore.ed.ac.uk,share=cmvm/sbms/groups/CDBS_SIDB_storage/NolanLab/ActiveProjects/Chris/Cohort12/derivatives/M{mouse}/D{day}/full/kilosort4/kilosort4_sa"
     sorting_analyzer = si.load_sorting_analyzer(sa_path, load_extensions=False)
-    for extension in ['spike_amplitudes', 'correlograms', 'unit_locations', 'templates', 'waveforms', 'template_similarity', 'quality_metrics', 'template_metrics']:
+    for extension in ['waveforms','correlograms', 'unit_locations', 'templates', 'template_similarity', 'spike_amplitudes', 'quality_metrics', 'template_metrics']:
+ #       try: 
         sorting_analyzer.load_extension(extension)
+ #       except:
+ #           sorting_analyzer.compute(extension)
     print(" done!")
+
+    #computed_qms = list(sorting_analyzer.get_extension("quality_metrics").get_data().keys())
+    computed_tms = list(sorting_analyzer.get_extension("template_metrics").get_data().keys())
+
+    #print("Checking which metrics have been computed...")
+    #if len(set(qm_metrics_list).difference(set(computed_qms))) != 0:
+    #    si.compute_quality_metrics(sorting_analyzer, metics_list = qm_metrics_list)
+    if len(set(tm_metrics_list).difference(set(computed_tms))) != 0:
+        si.compute_template_metrics(sorting_analyzer, metics_list = tm_metrics_list, include_multi_channel_metrics=True)
 
     app = QtWidgets.QApplication(sys.argv)
 
@@ -49,11 +67,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.data = DataForGUI(sorting_analyzer)
         ############### Intialise widgets and do some layout ###############
         self.decision_counter = 0
+        #good_units = sorting_analyzer.unit_ids
+
         good_units = list(get_good_units(sorting_analyzer).index)
         outlier_units = get_outlier_units(
             self.data.spikes, self.data.rec_samples)
         good_and_outlier_units = set(outlier_units).intersection(good_units)
         self.outlier_ids = np.sort(np.array(list(good_and_outlier_units)))
+
+        print(f"{len(good_units)} good units.")
+        print(f"{len(self.outlier_ids)} outlier units.")
 
         self.metrics = {}
         self.unit_id_1 = self.outlier_ids[0]
@@ -276,10 +299,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         the_text = f"""
             <p style='color: rgb({unit_1_color[0]}, {unit_1_color[1]}, {unit_1_color[2]})'>
-                (b)ack   {self.strike_merged(previous_id_1)} -- <strong>{self.unit_id_1}</strong> -- {self.strike_merged(next_id_1)}   (n)ext
+                (<strong>b</strong>)ack   {self.strike_merged(previous_id_1)} -- <strong>{self.unit_id_1}</strong> -- {self.strike_merged(next_id_1)}   (<strong>n</strong>)ext
             </p>
             <p style='color: rgb({unit_2_color[0]}, {unit_2_color[1]}, {unit_2_color[2]})'>
-                (a)nti-skip   {previous_id_2} -- <strong>{self.unit_id_2}</strong> -- {next_id_2}   (s)kip
+                (<strong>a</strong>)nti-skip   {previous_id_2} -- <strong>{self.unit_id_2}</strong> -- {next_id_2}   (<strong>s</strong>)kip
             </p>
             """
 
