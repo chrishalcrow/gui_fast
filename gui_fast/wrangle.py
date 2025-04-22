@@ -12,19 +12,55 @@ from compute import get_concat_waveforms, get_pcs_from_waveforms, get_binned_spi
 
 class DataForGUI:
 
-    def __init__(self, sorting_analyzer):
+    def __init__(self, sorting_analyzer, have_extension, rec_samples):
 
         self.merged_units = []
         self.sorting_analyzer = sorting_analyzer
 
         self.unit_ids = deepcopy(sorting_analyzer.unit_ids)
 
-        self.rec_samples = {"of1": 30007677, "vr": 54217811, "of2": 32232891}
+        self.rec_samples = rec_samples
         ###############   Get data from sorting analyzer ###############
 
-        print("caching amplitudes...")
-        self.amps = sorting_analyzer.get_extension(
-            "spike_amplitudes").get_data(outputs="by_unit")[0]
+        print("caching amplitudes and locations...")
+
+        random_spike_indices = si.random_spikes_selection(sorting_analyzer.sorting, max_spikes_per_unit=3000)
+        spike_vector = sorting_analyzer.sorting.to_spike_vector()
+        random_spikes = spike_vector[random_spike_indices]
+        self.random_spikes = si.spike_vector_to_spike_trains([random_spikes], unit_ids = sorting_analyzer.unit_ids)[0]
+
+        self.amps = {}
+        if have_extension['spike_amplitudes']:
+            amps = sorting_analyzer.get_extension("spike_amplitudes").get_data()
+            random_amps = amps[random_spike_indices]
+
+            for unit_id in sorting_analyzer.unit_ids:
+                self.amps[unit_id] = []
+            
+            for spike, amp in zip(random_spikes, random_amps):
+                unit_id = spike['unit_index']
+                self.amps[unit_id].append(amp)
+        amps = None
+
+
+        self.locs_x = {}
+        self.locs_y = {}
+        if have_extension['spike_locations']:
+            locs_y = sorting_analyzer.get_extension("spike_locations").get_data()['y']
+            locs_x = sorting_analyzer.get_extension("spike_locations").get_data()['x']
+            random_locs_x = locs_x[random_spike_indices]
+            random_locs_y = locs_y[random_spike_indices]
+            
+            for unit_id in sorting_analyzer.unit_ids:
+                self.locs_x[unit_id] = []
+                self.locs_y[unit_id] = []
+
+            for spike, loc_x, loc_y in zip(random_spikes, random_locs_x, random_locs_y):
+                unit_id = spike['unit_index']
+                self.locs_x[unit_id].append(loc_x)
+                self.locs_y[unit_id].append(loc_y)
+        #locs = None
+
         print("caching spikes...")
         self.spikes = si.spike_vector_to_spike_trains(
             sorting_analyzer.sorting.to_spike_vector(concatenated=False), unit_ids=sorting_analyzer.unit_ids)[0]
@@ -74,8 +110,16 @@ class DataForGUI:
         unit_data['amp_1'] = self.amps[unit_index_1]
         unit_data['amp_2'] = self.amps[unit_index_2]
 
+        unit_data['locs_x_1'] = self.locs_x[unit_index_1]
+        unit_data['locs_x_2'] = self.locs_x[unit_index_2]
+        unit_data['locs_y_1'] = self.locs_y[unit_index_1]
+        unit_data['locs_y_2'] = self.locs_y[unit_index_2]
+
         unit_data['spike_1'] = self.spikes[unit_index_1]
         unit_data['spike_2'] = self.spikes[unit_index_2]
+
+        unit_data['rand_spike_1'] = self.random_spikes[unit_index_1]
+        unit_data['rand_spike_2'] = self.random_spikes[unit_index_2]
 
         unit_data['template_1'] = self.templates[unit_index_1]
         unit_data['template_2'] = self.templates[unit_index_2]
@@ -116,15 +160,32 @@ class DataForGUI:
 
         new_unit_location = (
             self.unit_locations[unit_index_1] + self.unit_locations[unit_index_2])/2
-        new_spikes = np.sort(np.concatenate(
-            [self.spikes[unit_id_1], self.spikes[unit_id_2]]))
+        
         new_max_templates = (
             self.templates[unit_index_1] + self.templates[unit_id_2])/2
         new_quality_metrics = (
             self.quality_metrics.iloc[unit_id_1].values + self.quality_metrics.iloc[unit_id_2].values)/2
         new_template_metrics = (
             self.template_metrics.iloc[unit_id_1].values + self.template_metrics.iloc[unit_id_2].values)/2
+        
+        new_spikes = np.sort(np.concatenate(
+            [self.spikes[unit_id_1], self.spikes[unit_id_2]]))
+
+        new_random_spikes = np.sort(np.concatenate(
+            [self.random_spikes[unit_id_1], self.random_spikes[unit_id_2]]))
+        new_locs_x = np.concatenate(
+            [self.locs_x[unit_id_1], self.locs_x[unit_id_2]])
+        new_locs_y = np.concatenate(
+            [self.locs_y[unit_id_1], self.locs_y[unit_id_2]])
         new_amps = np.concatenate([self.amps[unit_id_1], self.amps[unit_id_2]])
+
+        new_rand_spike_indices = np.random.choice(range(0,len(new_random_spikes)), size=min(3000,len(new_random_spikes)), replace=False)
+
+        new_random_spikes=new_random_spikes[new_rand_spike_indices]
+        new_locs_x=new_locs_x[new_rand_spike_indices]
+        new_locs_y=new_locs_y[new_rand_spike_indices]
+        new_amps=new_amps[new_rand_spike_indices]
+       
 
         combined_sparsity_mask = self.sparsity_mask[unit_id_1] * \
             self.sparsity_mask[unit_id_2]
@@ -140,7 +201,10 @@ class DataForGUI:
         self.sparsity_mask[unit_index_1] = combined_sparsity_mask
         self.unit_locations[unit_index_1] = new_unit_location
         self.spikes[unit_id_1] = new_spikes
+        self.random_spikes[unit_id_1] = new_random_spikes
         self.amps[unit_id_1] = new_amps
+        self.locs_x[unit_id_1] = new_locs_x
+        self.locs_y[unit_id_1] = new_locs_y
         self.all_templates[unit_index_1] = new_all_templates
         self.templates[unit_index_1] = new_max_templates
         self.template_metrics.iloc[unit_index_1] = new_template_metrics
